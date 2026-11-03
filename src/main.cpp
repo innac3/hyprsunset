@@ -4,6 +4,7 @@
 static void printHelp() {
     Debug::log(NONE, "┣ --config            -c  →  Specify a custom config file path");
     Debug::log(NONE, "┣ --gamma             -g  →  Set the display gamma (default 100%)");
+    Debug::log(NONE, "┣ --saturation        -s  →  Set saturation (0–100%, default 100%, 0 is grayscale)");
     Debug::log(NONE, "┣ --gamma_max             →  Set the maximum display gamma (default 100%, maximum 200%)");
     Debug::log(NONE, "┣ --temperature       -t  →  Set the temperature in K (default 6000)");
     Debug::log(NONE, "┣ --identity          -i  →  Use the identity matrix (no color change)");
@@ -16,10 +17,11 @@ static void printHelp() {
 int main(int argc, char** argv, char** envp) {
     std::string configPath;
 
-    int         kelvin   = -1;
-    float       gamma    = -1;
-    float       maxGamma = -1;
-    bool        identity = false;
+    int         kelvin     = -1;
+    float       gamma      = -1;
+    float       maxGamma   = -1;
+    float       saturation = -1;
+    bool        identity   = false;
 
     g_pHyprsunset = std::make_unique<CHyprsunset>();
 
@@ -52,6 +54,22 @@ int main(int argc, char** argv, char** envp) {
             }
 
             ++i;
+        } else if (argv[i] == std::string{"-s"} || argv[i] == std::string{"--saturation"}) {
+            if (i + 1 >= argc) {
+                Debug::log(NONE, "✖ No saturation provided for {}", argv[i]);
+                return 1;
+            }
+
+            try {
+                size_t            consumed = 0;
+                const std::string value    = argv[++i];
+                saturation                 = std::stof(value, &consumed);
+                if (consumed != value.size() || !std::isfinite(saturation) || saturation < 0 || saturation > 100)
+                    throw std::invalid_argument("saturation");
+            } catch (const std::exception&) {
+                Debug::log(NONE, "✖ Saturation must be a number between 0 and 100");
+                return 1;
+            }
         } else if (argv[i] == std::string{"--gamma_max"}) {
             if (i + 1 >= argc) {
                 Debug::log(NONE, "✖ No gamma provided for {}", argv[i]);
@@ -106,6 +124,9 @@ int main(int argc, char** argv, char** envp) {
 
     if (gamma != -1)
         g_pHyprsunset->GAMMA = gamma;
+
+    if (saturation != -1)
+        g_pHyprsunset->SATURATION = saturation;
 
     if (maxGamma != -1)
         g_pHyprsunset->MAX_GAMMA = maxGamma;

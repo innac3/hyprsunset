@@ -40,16 +40,18 @@ struct SSunsetProfile {
 
     unsigned long temperature = 6000;
     float         gamma       = 1.0f;
+    float         saturation  = 100.0f;
     bool          identity    = false;
     std::string   onSwitch    = "";
 };
 
 class CHyprsunset {
   public:
-    float                         MAX_GAMMA = 1.0f; // default
-    float                         GAMMA     = 1.0f; // default
-    unsigned long long            KELVIN    = 6000; // default
-    std::string                   ONSWITCH  = "";   //default
+    float                         MAX_GAMMA  = 1.0f;   // default
+    float                         GAMMA      = 1.0f;   // default
+    float                         SATURATION = 100.0f; // percentage
+    unsigned long long            KELVIN     = 6000;   // default
+    std::string                   ONSWITCH   = "";     //default
     bool                          kelvinSet = false, identity = false;
     SState                        state;
     bool                          m_bTerminate = false;

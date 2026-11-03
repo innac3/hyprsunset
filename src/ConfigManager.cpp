@@ -24,6 +24,7 @@ void CConfigManager::init() {
     m_config.addSpecialConfigValue("profile", "time", Hyprlang::STRING{"00:00"});
     m_config.addSpecialConfigValue("profile", "temperature", Hyprlang::INT{6000});
     m_config.addSpecialConfigValue("profile", "gamma", Hyprlang::FLOAT{1.0f});
+    m_config.addSpecialConfigValue("profile", "saturation", Hyprlang::FLOAT{100.0f});
     m_config.addSpecialConfigValue("profile", "identity", Hyprlang::INT{0});
     m_config.addSpecialConfigValue("profile", "on-switch", Hyprlang::STRING{""});
 
@@ -45,6 +46,7 @@ std::vector<SSunsetProfile> CConfigManager::getSunsetProfiles() {
         std::string   time;
         unsigned long temperature;
         float         gamma;
+        float         saturation;
         bool          identity;
         std::string   onSwitch;
 
@@ -52,12 +54,18 @@ std::vector<SSunsetProfile> CConfigManager::getSunsetProfiles() {
             time        = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("profile", "time", key.c_str()));
             temperature = std::any_cast<Hyprlang::INT>(m_config.getSpecialConfigValue("profile", "temperature", key.c_str()));
             gamma       = std::any_cast<Hyprlang::FLOAT>(m_config.getSpecialConfigValue("profile", "gamma", key.c_str()));
+            saturation  = std::any_cast<Hyprlang::FLOAT>(m_config.getSpecialConfigValue("profile", "saturation", key.c_str()));
             identity    = std::any_cast<Hyprlang::INT>(m_config.getSpecialConfigValue("profile", "identity", key.c_str()));
             onSwitch    = std::any_cast<Hyprlang::STRING>(m_config.getSpecialConfigValue("profile", "on-switch", key.c_str()));
         } catch (const std::bad_any_cast& e) {
             RASSERT(false, "Failed to construct Profile: {}", e.what()); //
         } catch (const std::out_of_range& e) {
             RASSERT(false, "Missing property for Profile: {}", e.what()); //
+        }
+
+        if (!std::isfinite(saturation) || saturation < 0 || saturation > 100) {
+            Debug::log(ERR, "Invalid saturation: {}, skipping profile {}", saturation, key);
+            continue;
         }
 
         size_t separator = time.find(':');
@@ -84,6 +92,7 @@ std::vector<SSunsetProfile> CConfigManager::getSunsetProfiles() {
             },
             .temperature = temperature,
             .gamma       = gamma,
+            .saturation  = saturation,
             .identity    = identity,
             .onSwitch = onSwitch,
         });

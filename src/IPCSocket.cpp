@@ -143,6 +143,31 @@ bool CIPCSocket::mainThreadParseRequest() {
         return true;
     }
 
+    if (copy == "saturation" || copy.starts_with("saturation ")) {
+        if (copy == "saturation") {
+            m_szReply = std::to_string(g_pHyprsunset->SATURATION);
+            return false;
+        }
+
+        const auto args = copy.substr(11);
+        float      saturation;
+        try {
+            size_t consumed = 0;
+            saturation      = std::stof(args, &consumed);
+            if (consumed != args.size() || !std::isfinite(saturation))
+                throw std::invalid_argument("saturation");
+            if (args.front() == '+' || args.front() == '-')
+                saturation = std::clamp(g_pHyprsunset->SATURATION + saturation, 0.0f, 100.0f);
+            if (saturation < 0 || saturation > 100)
+                throw std::invalid_argument("saturation");
+        } catch (const std::exception&) {
+            m_szReply = "Invalid saturation value (should be in range 0-100%)";
+            return false;
+        }
+        g_pHyprsunset->SATURATION = saturation;
+        return true;
+    }
+
     if (copy.find("temperature") == 0) {
         int spaceSeparator = copy.find_first_of(' ');
         if (spaceSeparator == -1) {
@@ -217,11 +242,14 @@ bool CIPCSocket::mainThreadParseRequest() {
             } else if (args == "gamma") {
                 g_pHyprsunset->GAMMA = profile.gamma;
                 return true;
+            } else if (args == "saturation") {
+                g_pHyprsunset->SATURATION = profile.saturation;
+                return true;
             } else if (args == "identity") {
                 g_pHyprsunset->identity = profile.identity;
                 return true;
             } else {
-                m_szReply = "Invalid reset value (should be either temperature, gamma or identity)";
+                m_szReply = "Invalid reset value (should be either temperature, gamma, saturation or identity)";
                 return false;
             }
         }
@@ -242,7 +270,8 @@ bool CIPCSocket::mainThreadParseRequest() {
 
             g_pHyprsunset->scheduleOnSwitch();
 
-            m_szReply = std::format("Time: {:0>2}:{:0>2}\nTemperature: {}\nGamma: {}\nIdentity: {}\nOn-Switch: {}", hrs, mins, temp, gamma, ident, onSwitch);
+            m_szReply = std::format("Time: {:0>2}:{:0>2}\nTemperature: {}\nGamma: {}\nSaturation: {}\nIdentity: {}\nOn-Switch: {}", hrs, mins, temp, gamma, profile.saturation,
+                                    ident, onSwitch);
             return true;
         }
         m_szReply = "No profile is currently loaded";

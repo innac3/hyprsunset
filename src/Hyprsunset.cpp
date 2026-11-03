@@ -91,6 +91,11 @@ int CHyprsunset::calculateMatrix() {
         return 0;
     }
 
+    if (!std::isfinite(SATURATION) || SATURATION < 0 || SATURATION > 100) {
+        Debug::log(NONE, "✖ Saturation invalid: {}%. The saturation has to be between 0% and 100%", SATURATION);
+        return 0;
+    }
+
     if (!identity)
         Debug::log(NONE, "┣ Setting the temperature to {}K{}\n┃", KELVIN, kelvinSet ? "" : " (default)");
     else
@@ -98,6 +103,12 @@ int CHyprsunset::calculateMatrix() {
 
     // calculate the matrix
     state.ctm = identity ? Mat3x3::identity() : matrixForKelvin(KELVIN);
+    // Desaturate the input before applying the existing temperature and gamma.
+    // Rec. 709 luminance weights preserve neutral colors at every saturation.
+    const float saturation = identity ? 1.0f : SATURATION / 100.0f;
+    const float inverse    = 1.0f - saturation;
+    state.ctm.multiply(std::array<float, 9>{saturation + inverse * 0.2126f, inverse * 0.7152f, inverse * 0.0722f, inverse * 0.2126f, saturation + inverse * 0.7152f,
+                                            inverse * 0.0722f, inverse * 0.2126f, inverse * 0.7152f, saturation + inverse * 0.0722f});
     state.ctm.multiply(std::array<float, 9>{GAMMA, 0, 0, 0, GAMMA, 0, 0, 0, GAMMA});
 
     Debug::log(NONE, "┣ Calculated the CTM to be {}\n┃", state.ctm.toString());
@@ -334,6 +345,7 @@ void CHyprsunset::loadCurrentProfile() {
     SSunsetProfile profile = g_pHyprsunset->profiles[current];
     KELVIN                 = profile.temperature;
     GAMMA                  = profile.gamma;
+    SATURATION             = profile.saturation;
     ONSWITCH               = profile.onSwitch;
     identity               = profile.identity;
 
@@ -409,10 +421,11 @@ void CHyprsunset::schedule() {
             SSunsetProfile              newProfile = profiles[newcurrent];
 
             std::lock_guard<std::mutex> lg(m_sEventLoopInternals.loopRequestMutex);
-            KELVIN   = newProfile.temperature;
-            GAMMA    = newProfile.gamma;
-            ONSWITCH = newProfile.onSwitch;
-            identity = newProfile.identity;
+            KELVIN     = newProfile.temperature;
+            GAMMA      = newProfile.gamma;
+            SATURATION = newProfile.saturation;
+            ONSWITCH   = newProfile.onSwitch;
+            identity   = newProfile.identity;
 
             Debug::log(NONE, "┣ Switched to new profile from: {}:{}", newProfile.time.hour.count(), newProfile.time.minute.count());
 
